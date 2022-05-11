@@ -1,0 +1,33 @@
+parameters:
+  project:
+    type: string
+  skip-tests:
+    type: boolean
+    default: false
+  skip-e2e:
+    type: boolean
+    default: false
+executor:
+  name: common/node
+  feature: '-browsers'
+steps:
+  - checkout
+  - node/install-packages
+  - run:
+      name: Building
+      command: npm run build -- << parameters.project >> --prod
+  - unless:
+      condition: << parameters.skip-tests >>
+      steps:
+        - common/chrome-upgrade
+        - run:
+            name: Running unit tests
+            command: npm run test -- << parameters.project >> --watch false
+        - unless:
+            condition: << parameters.skip-e2e >>
+            steps:
+              - run:
+                  name: Running e2e tests
+                  command: npm run e2e
+        - store_test_results:
+            path: test-results
