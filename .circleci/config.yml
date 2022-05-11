@@ -1,23 +1,41 @@
-version: '2.1'
-orbs:
-  angular-npm-orb: 'code0987/angular-npm-orb@dev:alpha'
+version: 2
+jobs:
+  build:
+    working_directory: ~/repo
+    docker:
+      - image: circleci/node:12-browsers
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "package-lock.json" }}
+          - v1-dependencies-
+      - run:
+          name: install dependencies
+          command: npm install
+      - save_cache:
+          key: v1-dependencies-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Test
+          command:  npm run test-prod
+      - run:
+          name: build
+          command: |
+            if [ $CIRCLE_BRANCH = 'master' ]; then
+              npm run build-prod
+            fi
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
 workflows:
-  use-my-orb:
+  version: 2
+  build_and_deploy:
     jobs:
-      - angular-npm-orb/test:
-          e2e: false
-          project: example-angular-library
-          test: true
-      - angular-npm-orb/build:
-          project: example-angular-library
-          requires:
-            - angular-npm-orb/test
-      - angular-npm-orb/publish:
-          access: public
-          environment:
-            NPM_EMAIL: ...
-            NPM_REGISTRY: 'https://registry.npmjs.org'
-            NPM_TOKEN: ...
-          path: dist/example-angular-library
-          requires:
-            - angular-npm-orb/build
+      - build:
+          filters:
+            branches:
+              only:
+                - master
